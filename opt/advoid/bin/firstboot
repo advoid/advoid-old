@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# Install reqired packages
+emerge djbdns dos2unix ntp
+
+rc-update add ntp-client default
+rc-update add svscan default
+rc-update add ssh default
+
+ssh-keygen
+
+touch /root/firstboot.done
+
+reboot

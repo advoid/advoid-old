@@ -1,0 +1,43 @@
+#!/bin/bash
+
+source /boot/advoid.txt
+
+mkdir -p /root/.hosts/source
+cd /root/.hosts
+
+#echo "Downloading hosts file..."
+#wget -O - ${HOSTS} > /root/.hosts/hosts
+
+echo "Preparing hosts file for processing..."
+cat hosts | dos2unix | grep -v "#" | grep -v -e '^$' | awk '{print $2}' | tr '[:upper:]' '[:lower:]' | sort -u > hosts.unix
+
+echo -ne "Creating DNS data...\r"
+count=0
+total=`cat hosts.unix | wc -l`
+for item in `cat hosts.unix`;
+do
+        echo "127.0.0.1" > /root/.hosts/source/${item};
+        echo "."${item}"::"${IP} >> /root/.hosts/data
+        echo "="${item}":"${IP} >> /root/.hosts/data
+        count=$(( count + 1 ));
+        echo -ne "Creating DNS data: "${count}" / "${total}"\r"
+done
+echo ""
+
+echo "Creating tinydns data file..."
+cat /root/.hosts/data > /var/tinydns/root/data
+cd /var/tinydns/root/
+make
+
+echo "Syncing DNS data to /var/dnscache/root/servers/..."
+rsync -ar --del --info=progress2 --exclude=@ /root/.hosts/source/ /var/dnscache/root/servers/
+
+echo "Removing temporary data..."
+rm -f /root/.hosts/data
+#rm -f /root/.hosts/hosts
+rm -f /root/.hosts/source/*
+
+echo "Restarting dnscache..."
+/etc/init.d/svscan stop
+sleep 10
+/etc/init.d/svscan start
